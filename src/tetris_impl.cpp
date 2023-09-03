@@ -2,7 +2,14 @@ module;
 #include <iostream>
 module tetris;
 
-static constexpr SDL_Color s_colors[] = {{0, 0, 0, 255}, {255, 0, 0, 255}, {255, 165, 0, 255}, {0, 255, 0, 255}, {0, 0, 255, 255}};
+static constexpr SDL_Color s_colors[] = {
+    {0, 0, 0, 255}, 
+    {255, 0, 0, 255}, 
+    {128, 0, 128, 255},
+    {255, 165, 0, 255}, 
+    {0, 255, 0, 255}, 
+    {0, 0, 255, 255}
+};
 
 static constexpr uint8_t I[] = { 4,
     0, 0, 0, 0,
@@ -50,6 +57,13 @@ static constexpr const float s_time_to_drop[] = {
     1.0 / 60.0f
 };
 
+static constexpr float s_time_to_merge[] = {
+    s_time_to_drop[0] * (22 + 10),
+    s_time_to_drop[1] * (22 + 10),
+    s_time_to_drop[2] * (22 + 10),
+    s_time_to_drop[3] * (22 + 10)
+};
+
 void Tetris::init_debug()
 {
     std::cout << "size of Tetromino" << sizeof(Tetromino) <<std::endl;
@@ -72,13 +86,19 @@ void Tetris::init_debug()
 
 void Tetris::update_tetromino(float delta_time)
 {
-    time_passed_ += delta_time;
+    drop_timer_ += delta_time;
+    merge_timer_ += delta_time;
     // std::cout << delta_time << std::endl;
-    if(time_passed_ <= s_time_to_drop[level_ - 1])
+    if(drop_timer_ <= s_time_to_drop[level_ - 1])
         return;
-    time_passed_ = 0.0f;
+    drop_timer_ = 0.0f;
     soft_drop();
-    
+    if(merge_timer_ <= s_time_to_merge[level_ - 1])
+        return;
+    merge_timer_ = 0.0f;
+    merge();
+    curr_tetromino_ = next_tetromino_;
+    generate_tetromino(next_tetromino_);
 }
 
 void Tetris::rotate_left()
@@ -105,7 +125,11 @@ void Tetris::hard_drop()
 
 void Tetris::soft_drop()
 {
-    curr_tetromino_.row++;
+    ++curr_tetromino_.row;
+    if(!check_tetromino_state_valid())
+    {
+        --curr_tetromino_.row;
+    }
 }
 
 void Tetris::render_all(const Renderer& renderer) const
@@ -219,4 +243,78 @@ void Tetris::generate_tetromino(Tetromino& in_tetromino)
     in_tetromino.rotation = 1;
     in_tetromino.row = 1;
     in_tetromino.col = static_cast<uint8_t>(col + 1);
+}
+
+uint8_t Tetris::get_tallest_underneath()
+{
+    const auto& tetromino = s_tetrominoes[curr_tetromino_.type];
+    uint8_t n = tetromino[0];
+    uint8_t row = curr_tetromino_.row + n - 1, col = curr_tetromino_.col;
+    int min_row = ACTUAL_HEIGHT;
+    for(int i = 0; i < n; ++i)
+    {
+        // get the bottom of current piece
+        while(tetromino[tetromino_row_col_to_index(row, col + i, curr_tetromino_, n)] == 0)
+        {
+            row--;
+        }
+        row++;
+        while(board_[board_row_col_to_index(row, col + i)] == 0)
+        {
+            row++;
+        }
+        if(row < min_row)
+            min_row = row;
+    }
+    
+    return min_row;
+}
+
+void Tetris::merge()
+{
+    const auto& tetromino = s_tetrominoes[curr_tetromino_.type];
+
+    uint8_t local_row = 0, local_col = 0;
+    uint8_t n = tetromino[0];
+    uint8_t color = curr_tetromino_.color;
+    uint8_t row = curr_tetromino_.row, col = curr_tetromino_.col;
+    while(local_row < n)
+    {
+        uint8_t data = tetromino[tetromino_row_col_to_index(local_row, local_col, curr_tetromino_, n)];
+        if(data != 0)
+            board_[board_row_col_to_index(row + local_row, col + local_col)] = data * color;
+        local_col++;
+        if(local_col == n)
+        {
+            local_row++;
+            local_col = 0;
+        }
+    }
+}
+
+bool Tetris::check_tetromino_state_valid() const
+{
+    const auto& tetromino = s_tetrominoes[curr_tetromino_.type];
+    int local_row = 0, local_col = 0;
+    int n = tetromino[0];
+
+    int row = curr_tetromino_.row, col = curr_tetromino_.col;
+    while(local_row < n)
+    {
+        uint8_t data = tetromino[tetromino_row_col_to_index(local_row, local_col, curr_tetromino_, n)];
+        if(data != 0)
+        {
+            if(board_[board_row_col_to_index(row + local_row, col + local_col)] !=0 ||
+            row + local_row > ACTUAL_HEIGHT || 
+            col + local_col > WIDTH)
+                return false;
+        }
+        local_col++;
+        if(local_col == n)
+        {
+            local_row++;
+            local_col = 0;
+        }
+    }
+    return true;
 }
