@@ -5,6 +5,7 @@ export module tetris;
 import <random>;
 
 import renderer;
+import input;
 
 constexpr uint8_t WIDTH = 10;
 constexpr uint8_t HEIGHT = 20;
@@ -43,7 +44,7 @@ public:
     void init_debug();
     void init();
 
-    void set_up_key_mapping();
+    void setup_input(SDL_Scancode, InputSystem&);
     
     bool is_game_end();
     void update_tetromino(float delta_time);
@@ -52,6 +53,9 @@ public:
 
     void rotate_left();
     void rotate_right();
+    void move_left();
+    void move_right();
+    void move_down();
 
     void hold_tetromino();
 

@@ -4,13 +4,12 @@ export module engine;
 import window;
 import renderer;
 import tetris;
+import input;
 
-class Context {
-
-};
-
-// RAII Engine class
 export class Engine {
+    Tetris tetris_{};
+    InputSystem input_{};
+    bool should_close_ = false;
 public:
     Engine();
     Engine(const Engine&) = delete;
@@ -19,6 +18,7 @@ public:
 
     void run();
 private:
-    bool should_close_ = false;
-    Tetris tetris_{};
+    void process_input();
+
+
 };

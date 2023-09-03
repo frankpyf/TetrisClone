@@ -84,6 +84,12 @@ void Tetris::init_debug()
     generate_tetromino(next_tetromino_);
 }
 
+void Tetris::setup_input(SDL_Scancode key, InputSystem& input)
+{
+    input.bind_action(key, std::bind(&Tetris::move_right, this));
+    //input.bind_action(key, std::bind(&Tetris::move_left, this));
+}
+
 void Tetris::update_tetromino(float delta_time)
 {
     drop_timer_ += delta_time;
@@ -104,11 +110,33 @@ void Tetris::update_tetromino(float delta_time)
 void Tetris::rotate_left()
 {
     curr_tetromino_.rotation = (curr_tetromino_.rotation + 3) % 4;
+    if(!check_tetromino_state_valid())
+    {
+        curr_tetromino_.rotation = (curr_tetromino_.rotation + 1) % 4;
+    }
 }
 
 void Tetris::rotate_right()
 {
     curr_tetromino_.rotation = (curr_tetromino_.rotation + 1) % 4;
+    if(!check_tetromino_state_valid())
+    {
+        curr_tetromino_.rotation = (curr_tetromino_.rotation + 3) % 4;
+    }
+}
+
+void Tetris::move_left()
+{
+
+}
+
+void Tetris::move_right()
+{
+    ++curr_tetromino_.col;
+    if(!check_tetromino_state_valid())
+    {
+        --curr_tetromino_.col;
+    }
 }
 
 void Tetris::hold_tetromino()

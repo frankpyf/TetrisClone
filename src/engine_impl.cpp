@@ -22,6 +22,7 @@ void Engine::run()
     SDL_Event event;
 
     tetris_.init_debug();
+    tetris_.setup_input(SDL_SCANCODE_Z, input_);
 
     float dt = s_ms_per_frame;
     uint64_t begin_time = SDL_GetTicks64();
@@ -35,6 +36,9 @@ void Engine::run()
             {
                 case SDL_QUIT:
                     should_close_ = true;
+                    break;
+                case SDL_MOUSEBUTTONDOWN:
+                    input_.handle_input(event.button);
                     break;
                 default:
                     break;
