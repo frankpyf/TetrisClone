@@ -15,7 +15,7 @@ public:
     Engine(const Engine&) = delete;
     Engine& operator=(const Engine&) = delete;
     virtual ~Engine();
-
+    void init();
     void run();
 private:
     void process_input();

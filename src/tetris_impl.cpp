@@ -3,12 +3,15 @@ module;
 module tetris;
 
 static constexpr SDL_Color s_colors[] = {
-    {0, 0, 0, 255}, 
-    {255, 0, 0, 255}, 
-    {128, 0, 128, 255},
-    {255, 165, 0, 255}, 
-    {0, 255, 0, 255}, 
-    {0, 0, 255, 255}
+    {0, 0, 0, 255},     // Empty block
+    {255, 99, 71, 255}, 
+    {255, 250, 205,255},
+    {151, 78,  115, 255},
+    {253, 131, 110, 255}, 
+    {10,  175, 136, 255}, 
+    {161, 234, 214, 255},
+    {144, 199, 240, 255},
+    {248, 248, 248, 255}  // Block to be eliminated
 };
 
 static constexpr uint8_t I[] = { 4,
@@ -84,12 +87,6 @@ void Tetris::init_debug()
     generate_tetromino(next_tetromino_);
 }
 
-void Tetris::setup_input(SDL_Scancode key, InputSystem& input)
-{
-    input.bind_action(key, std::bind(&Tetris::move_right, this));
-    //input.bind_action(key, std::bind(&Tetris::move_left, this));
-}
-
 void Tetris::update_tetromino(float delta_time)
 {
     drop_timer_ += delta_time;
@@ -97,6 +94,14 @@ void Tetris::update_tetromino(float delta_time)
     // std::cout << delta_time << std::endl;
     if(drop_timer_ <= s_time_to_drop[level_ - 1])
         return;
+    
+    // TODO: Optimize this
+    for(uint8_t row = 1; row <= ACTUAL_HEIGHT; ++row)
+    {
+        if(board_[board_row_col_to_index(row, 1)] == (NUM_COLOR + 1))
+            clear_row(row);
+    }
+
     drop_timer_ = 0.0f;
     soft_drop();
     if(merge_timer_ <= s_time_to_merge[level_ - 1])
@@ -127,7 +132,11 @@ void Tetris::rotate_right()
 
 void Tetris::move_left()
 {
-
+    --curr_tetromino_.col;
+    if(!check_tetromino_state_valid())
+    {
+        ++curr_tetromino_.col;
+    }
 }
 
 void Tetris::move_right()
@@ -148,7 +157,16 @@ void Tetris::hold_tetromino()
 
 void Tetris::hard_drop()
 {
-
+    while(check_tetromino_state_valid())
+    {
+        ++curr_tetromino_.row;
+    }
+    --curr_tetromino_.row;    
+    merge();
+    drop_timer_ = 0.0f;
+    merge_timer_ = 0.0f;
+    curr_tetromino_ = next_tetromino_;
+    generate_tetromino(next_tetromino_);
 }
 
 void Tetris::soft_drop()
@@ -221,15 +239,40 @@ void Tetris::set_board(uint8_t row, uint8_t col, uint8_t value)
     board_[board_row_col_to_index(row, col)] = value;
 }
 
+bool Tetris::check_row_full(uint8_t row) const
+{
+    for(uint8_t col = 1; col <= WIDTH; ++col)
+    {
+        if(board_[board_row_col_to_index(row, col)] == 0)
+            return false;
+    }
+    return true;
+}
+
 void Tetris::clear_row(uint8_t row)
 {
-    for(int i = 1; i <= 10; ++i)
-    {
-        set_board(row, i, 0);
-    }
     if(row == ACTUAL_HEIGHT)
     {
-        bottom_row_ = (bottom_row_ + 1) % 22;
+        for(int i = 1; i <= 10; ++i)
+        {
+            set_board(row, i, 0);
+        }
+        bottom_row_ = (bottom_row_ - 1) == 0 ? 22 : --bottom_row_;
+    }
+    else
+    {
+        for(int line = row; line > 1; --line)
+        {
+            memcpy(&board_[board_row_col_to_index(line, 1)], &board_[board_row_col_to_index(line - 1, 1)], WIDTH);
+        }
+    }
+}
+
+void Tetris::set_row(uint8_t row, uint8_t value)
+{
+    for(uint8_t col = 1; col <= WIDTH; ++col)
+    {
+        board_[board_row_col_to_index(row, col)] = value;
     }
 }
 
@@ -311,6 +354,10 @@ void Tetris::merge()
         uint8_t data = tetromino[tetromino_row_col_to_index(local_row, local_col, curr_tetromino_, n)];
         if(data != 0)
             board_[board_row_col_to_index(row + local_row, col + local_col)] = data * color;
+        if(check_row_full(row + local_row))
+        {
+            set_row(row + local_row, NUM_COLOR + 1);
+        }
         local_col++;
         if(local_col == n)
         {
@@ -333,8 +380,8 @@ bool Tetris::check_tetromino_state_valid() const
         if(data != 0)
         {
             if(board_[board_row_col_to_index(row + local_row, col + local_col)] !=0 ||
-            row + local_row > ACTUAL_HEIGHT || 
-            col + local_col > WIDTH)
+            row + local_row > ACTUAL_HEIGHT || row + local_row <= 0 ||
+            col + local_col > WIDTH || col + local_col <= 0)
                 return false;
         }
         local_col++;

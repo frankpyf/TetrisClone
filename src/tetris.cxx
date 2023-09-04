@@ -12,7 +12,7 @@ constexpr uint8_t HEIGHT = 20;
 // height with hidden bars
 constexpr uint8_t ACTUAL_HEIGHT = 22;
 
-constexpr uint8_t NUM_COLOR = 5;
+constexpr uint8_t NUM_COLOR = 7;
 
 // 8 bytes
 struct Tetromino {
@@ -36,15 +36,13 @@ export class Tetris {
     float merge_timer_ = 0.0;
     // ring buffer
     uint8_t board_[WIDTH * ACTUAL_HEIGHT]{0};
-    uint8_t bottom_row_ = 0;
+    uint8_t bottom_row_ = 22;
 
     uint8_t level_ = 3;
     uint32_t points_ = 0;
 public:
     void init_debug();
     void init();
-
-    void setup_input(SDL_Scancode, InputSystem&);
     
     bool is_game_end();
     void update_tetromino(float delta_time);
@@ -68,6 +66,8 @@ private:
     void render_tetromino(const Renderer&) const;
 
     void set_board(uint8_t row, uint8_t col, uint8_t value);
+    bool check_row_full(uint8_t row) const;
+    void set_row(uint8_t row, uint8_t value);
     void clear_row(uint8_t row);
 
     void merge();

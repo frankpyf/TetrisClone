@@ -15,14 +15,21 @@ Engine::Engine()
     std::cout<<"Engine created"<<std::endl;
 }
 
+void Engine::init()
+{
+    tetris_.init_debug();
+    input_.bind_action(SDL_SCANCODE_Q, std::bind(&Tetris::rotate_left, &tetris_));
+    input_.bind_action(SDL_SCANCODE_E, std::bind(&Tetris::rotate_right, &tetris_));
+    input_.bind_action(SDL_SCANCODE_A, std::bind(&Tetris::move_left, &tetris_));
+    input_.bind_action(SDL_SCANCODE_D, std::bind(&Tetris::move_right, &tetris_));
+    input_.bind_action(SDL_SCANCODE_SPACE, std::bind(&Tetris::hard_drop, &tetris_));
+}
+
 void Engine::run()
 {
     Window window;
     Renderer renderer(window);
     SDL_Event event;
-
-    tetris_.init_debug();
-    tetris_.setup_input(SDL_SCANCODE_Z, input_);
 
     float dt = s_ms_per_frame;
     uint64_t begin_time = SDL_GetTicks64();
@@ -37,9 +44,13 @@ void Engine::run()
                 case SDL_QUIT:
                     should_close_ = true;
                     break;
+                case SDL_KEYDOWN:
+                    input_.handle_input(event.key);
+                    break;
                 case SDL_MOUSEBUTTONDOWN:
                     input_.handle_input(event.button);
                     break;
+                
                 default:
                     break;
             }
