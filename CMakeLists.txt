@@ -10,8 +10,11 @@ set(CMAKE_CXX_STANDARD 20)
 # there are a number of behaviors that have CMake APIs to provide the required features to build and export them from a project.
 set(CMAKE_EXPERIMENTAL_CXX_MODULE_CMAKE_API "aa1f7df0-828a-4fcd-9afc-2dc80491aca7")
 set(CMAKE_EXPERIMENTAL_CXX_MODULE_DYNDEP 1)
+
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   include(gcc_modules.cmake)
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+  set(CMAKE_CXX_EXTENSIONS OFF)
 endif()
 
 include(FetchContent)
