@@ -197,24 +197,34 @@ void Tetris::render_all(const Renderer& renderer) const
     }
 
     // render current tetromino
-    render_tetromino(renderer);
+    render_tetromino(curr_tetromino_, renderer);
 
     // render upcoming tetromino
-    //render_
+    row = 9, col = 15;
+    for(int i = 0; i < 16; ++i)
+    {
+        if(++col > 19)
+        {
+            col = 16;
+            ++row;
+        }
+        render_block(row, col, s_colors[0], renderer);
+    }
+    render_tetromino(next_tetromino_, renderer);
 }
 
-void Tetris::render_tetromino(const Renderer& renderer) const
+void Tetris::render_tetromino(const Tetromino& in_piece, const Renderer& renderer)
 {
-    const auto& tetromino = s_tetrominoes[curr_tetromino_.type];
-    SDL_Color color = s_colors[curr_tetromino_.color];
+    const auto& tetromino = s_tetrominoes[in_piece.type];
+    SDL_Color color = s_colors[in_piece.color];
 
     int local_row = 0, local_col = 0;
     int n = tetromino[0];
 
-    int row = curr_tetromino_.row, col = curr_tetromino_.col;
+    int row = in_piece.row, col = in_piece.col;
     while(local_row < n)
     {
-        uint8_t data = tetromino[tetromino_row_col_to_index(local_row, local_col, curr_tetromino_, n)];
+        uint8_t data = tetromino[tetromino_row_col_to_index(local_row, local_col, in_piece, n)];
         if(data != 0)
             render_block(row + local_row, col + local_col, color, renderer);
         local_col++;
@@ -226,7 +236,7 @@ void Tetris::render_tetromino(const Renderer& renderer) const
     }
 }
 
-void Tetris::render_block(uint8_t row, uint8_t col, const SDL_Color& color, const Renderer& renderer) const
+void Tetris::render_block(uint8_t row, uint8_t col, const SDL_Color& color, const Renderer& renderer)
 {
     constexpr int w = 30, h = 30;
     // TODO: eliminate hard coding: 490, 720...

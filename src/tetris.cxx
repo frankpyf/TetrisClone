@@ -62,8 +62,8 @@ public:
 private:
     void generate_tetromino(Tetromino& in_tetromino);
     
-    void render_block(uint8_t row, uint8_t col, const SDL_Color&, const Renderer&) const;
-    void render_tetromino(const Renderer&) const;
+    static void render_block(uint8_t row, uint8_t col, const SDL_Color&, const Renderer&);
+    static void render_tetromino(const Tetromino&,const Renderer&);
 
     void set_board(uint8_t row, uint8_t col, uint8_t value);
     bool check_row_full(uint8_t row) const;
