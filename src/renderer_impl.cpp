@@ -1,6 +1,11 @@
 module;
 #include "SDL.h"
+#if !_MSC_VER
+#include <memory>
+#endif
 module renderer;
+
+import window;
 
 Renderer::Renderer(const Window& in_window)
 {

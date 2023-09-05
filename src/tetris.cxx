@@ -2,8 +2,6 @@ module;
 #include "SDL.h"
 export module tetris;
 
-import <random>;
-
 import renderer;
 import input;
 
@@ -71,6 +69,8 @@ private:
     void clear_row(uint8_t row);
 
     void merge();
+    // swap current and next tetromino
+    void swap();
 
     bool check_tetromino_state_valid() const;
 

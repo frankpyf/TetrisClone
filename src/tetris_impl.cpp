@@ -1,7 +1,14 @@
 module;
 #include <iostream>
+#if !_MSC_VER
+#include <random>
+#include "SDL.h"
+#endif
 module tetris;
-
+#if _MSC_VER && !__INTEL_COMPILER
+import <random>;
+#endif
+import renderer;
 static constexpr SDL_Color s_colors[] = {
     {0, 0, 0, 255},     // Empty block
     {255, 99, 71, 255}, 
@@ -86,6 +93,8 @@ void Tetris::init_debug()
 
     generate_tetromino(curr_tetromino_);
     generate_tetromino(next_tetromino_);
+    curr_tetromino_.col = 1;
+    curr_tetromino_.row = 1;
 }
 
 void Tetris::update_tetromino(float delta_time)
@@ -110,6 +119,8 @@ void Tetris::update_tetromino(float delta_time)
     merge_timer_ = 0.0f;
     merge();
     curr_tetromino_ = next_tetromino_;
+    curr_tetromino_.row = 1;
+    curr_tetromino_.col = 1;
     generate_tetromino(next_tetromino_);
 }
 
@@ -167,6 +178,8 @@ void Tetris::hard_drop()
     drop_timer_ = 0.0f;
     merge_timer_ = 0.0f;
     curr_tetromino_ = next_tetromino_;
+    curr_tetromino_.row = 1;
+    curr_tetromino_.col = 1;
     generate_tetromino(next_tetromino_);
 }
 
@@ -322,8 +335,8 @@ void Tetris::generate_tetromino(Tetromino& in_tetromino)
     in_tetromino.color = static_cast<uint8_t>(color);
     in_tetromino.type = type;
     in_tetromino.rotation = 1;
-    in_tetromino.row = 1;
-    in_tetromino.col = static_cast<uint8_t>(col + 1);
+    in_tetromino.row = 9;
+    in_tetromino.col = 16;
 }
 
 uint8_t Tetris::get_tallest_underneath()

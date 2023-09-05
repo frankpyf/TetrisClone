@@ -5,6 +5,7 @@ module engine;
 
 import window;
 import renderer;
+import tetris;
 
 // 60 fps
 static constexpr float s_ms_per_frame = 1.0 / 60.0;

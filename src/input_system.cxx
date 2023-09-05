@@ -1,10 +1,15 @@
 module;
 #include "SDL.h"
+#if !_MSC_VER
+#include <functional>
+#include <unordered_map>
+#endif
 export module input;
 
+#if _MSC_VER && !__INTEL_COMPILER
 export import <functional>;
-import <map>;
-
+import <unordered_map>;
+#endif
 
 export class InputSystem {
     std::unordered_map<SDL_Scancode, std::function<void()>> callbacks_;

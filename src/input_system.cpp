@@ -1,5 +1,6 @@
 module;
 #include <iostream>
+#include "SDL.h"
 module input;
 
 void InputSystem::handle_input(const SDL_MouseButtonEvent& e)

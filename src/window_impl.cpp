@@ -1,5 +1,9 @@
 module;
 #include "SDL.h"
+#if !_MSC_VER
+#include "SDL.h"
+#include <memory>
+#endif
 module window;
 
 Window::Window(uint32_t height, uint32_t width)
