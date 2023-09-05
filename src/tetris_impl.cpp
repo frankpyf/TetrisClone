@@ -69,6 +69,7 @@ static constexpr float s_time_to_merge[] = {
 
 void Tetris::init_debug()
 {
+    std::srand(std::time(nullptr));
     std::cout << "size of Tetromino" << sizeof(Tetromino) <<std::endl;
     std::cout << "size of Tetris" << sizeof(Tetris) <<std::endl;
     // board_[218] = 1;
@@ -184,15 +185,15 @@ void Tetris::render_all(const Renderer& renderer) const
     // bottom right: (10, 22)
 
     // render board
-    uint8_t row = 3, col = 1;
+    uint8_t row = 3, col = 0;
     for(int i = 0; i < WIDTH * ACTUAL_HEIGHT; ++i)
     {
-        if(col == WIDTH + 1)
+        if(++col > WIDTH)
         {
             col = 1;
             ++row;
         }
-        render_block(row, col++, s_colors[board_[board_row_col_to_index(row, col)]], renderer);
+        render_block(row, col, s_colors[board_[board_row_col_to_index(row, col)]], renderer);
     }
 
     // render current tetromino
@@ -279,7 +280,7 @@ void Tetris::set_row(uint8_t row, uint8_t value)
 uint8_t Tetris::board_row_col_to_index(uint8_t row, uint8_t col) const
 {
 
-    return ((bottom_row_ * WIDTH) + (row - 1) * WIDTH + col - 1) % (WIDTH * ACTUAL_HEIGHT);
+    return ((bottom_row_ * (WIDTH)) + (row - 1) * WIDTH + col - 1) % (WIDTH * ACTUAL_HEIGHT);
 }
 
 uint8_t Tetris::tetromino_row_col_to_index(uint8_t local_row, uint8_t local_col, Tetromino tetromino, uint8_t n) 
@@ -301,7 +302,6 @@ uint8_t Tetris::tetromino_row_col_to_index(uint8_t local_row, uint8_t local_col,
 
 void Tetris::generate_tetromino(Tetromino& in_tetromino)
 {
-    std::srand(std::time(nullptr));
     // color
     int color = std::rand() % NUM_COLOR + 1;
     // type
