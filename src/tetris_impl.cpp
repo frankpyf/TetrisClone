@@ -93,7 +93,7 @@ void Tetris::init_debug()
 
     generate_tetromino(curr_tetromino_);
     generate_tetromino(next_tetromino_);
-    curr_tetromino_.col = 1;
+    curr_tetromino_.col = static_cast<uint8_t>((WIDTH - s_tetrominoes[curr_tetromino_.type][0]) / 2.0);
     curr_tetromino_.row = 1;
 }
 
@@ -120,25 +120,25 @@ void Tetris::update_tetromino(float delta_time)
     merge();
     curr_tetromino_ = next_tetromino_;
     curr_tetromino_.row = 1;
-    curr_tetromino_.col = 1;
+    curr_tetromino_.col = static_cast<uint8_t>((WIDTH - s_tetrominoes[curr_tetromino_.type][0]) / 2.0);
     generate_tetromino(next_tetromino_);
 }
 
 void Tetris::rotate_left()
 {
     curr_tetromino_.rotation = (curr_tetromino_.rotation + 3) % 4;
-    if(!check_tetromino_state_valid())
+    while(!check_tetromino_state_valid())
     {
-        curr_tetromino_.rotation = (curr_tetromino_.rotation + 1) % 4;
+        curr_tetromino_.row--;
     }
 }
 
 void Tetris::rotate_right()
 {
     curr_tetromino_.rotation = (curr_tetromino_.rotation + 1) % 4;
-    if(!check_tetromino_state_valid())
+    while(!check_tetromino_state_valid())
     {
-        curr_tetromino_.rotation = (curr_tetromino_.rotation + 3) % 4;
+        curr_tetromino_.row--;
     }
 }
 

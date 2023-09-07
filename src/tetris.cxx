@@ -20,8 +20,8 @@ struct Tetromino {
     // row of the top left block of this piece
     uint8_t row         = 1;
     // col of the top left block of this piece
-    uint8_t col         = 1;
-    char    padding[3];
+    int8_t  col         = 1;
+    char    padding[2];
 };
 
 export class Tetris {
