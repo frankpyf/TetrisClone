@@ -23,6 +23,7 @@ void Engine::init()
     input_.bind_action(SDL_SCANCODE_E, std::bind(&Tetris::rotate_right, &tetris_));
     input_.bind_action(SDL_SCANCODE_A, std::bind(&Tetris::move_left, &tetris_));
     input_.bind_action(SDL_SCANCODE_D, std::bind(&Tetris::move_right, &tetris_));
+    input_.bind_action(SDL_SCANCODE_H, std::bind(&Tetris::hold_tetromino, &tetris_));
     input_.bind_action(SDL_SCANCODE_SPACE, std::bind(&Tetris::hard_drop, &tetris_));
 }
 

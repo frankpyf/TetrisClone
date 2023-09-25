@@ -21,7 +21,7 @@ struct Tetromino {
     uint8_t row         = 1;
     // col of the top left block of this piece
     int8_t  col         = 1;
-    char    padding[2];
+    char    padding[3];
 };
 
 export class Tetris {
@@ -38,6 +38,7 @@ export class Tetris {
 
     uint8_t level_ = 3;
     uint32_t points_ = 0;
+    bool can_hold = true;
 public:
     void init_debug();
     void init();

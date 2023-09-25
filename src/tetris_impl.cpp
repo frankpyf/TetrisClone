@@ -11,13 +11,13 @@ import <random>;
 import renderer;
 static constexpr SDL_Color s_colors[] = {
     {0, 0, 0, 255},     // Empty block
-    {255, 99, 71, 255}, 
-    {255, 250, 205,255},
-    {151, 78,  115, 255},
-    {253, 131, 110, 255}, 
-    {10,  175, 136, 255}, 
-    {161, 234, 214, 255},
-    {144, 199, 240, 255},
+    {255, 0, 0, 255}, 
+    {0, 255, 255,255},
+    {128, 0,  128, 255},
+    {255, 255, 0, 255}, 
+    {0,  255, 0, 255}, 
+    {0, 0, 255, 255},
+    {255, 127, 0, 255},
     {248, 248, 248, 255}  // Block to be eliminated
 };
 
@@ -101,7 +101,7 @@ void Tetris::update_tetromino(float delta_time)
 {
     drop_timer_ += delta_time;
     merge_timer_ += delta_time;
-    // std::cout << delta_time << std::endl;
+    
     // tick
     if(drop_timer_ <= s_time_to_drop[level_ - 1])
         return;
@@ -164,9 +164,26 @@ void Tetris::move_right()
 
 void Tetris::hold_tetromino()
 {
+    if(!can_hold)
+        return;
     Tetromino temp = curr_tetromino_;
-    curr_tetromino_ = hold_tetromino_;
+    if(hold_tetromino_.type != UINT8_MAX)
+    {
+        curr_tetromino_ = hold_tetromino_;
+        curr_tetromino_.col = (WIDTH - s_tetrominoes[curr_tetromino_.type][0]) / 2.0 + 1;
+        curr_tetromino_.row = 1;
+    }
+    else   
+    {
+        curr_tetromino_ = next_tetromino_;
+        generate_tetromino(next_tetromino_);
+        curr_tetromino_.col = (WIDTH - s_tetrominoes[curr_tetromino_.type][0]) / 2.0 + 1;
+        curr_tetromino_.row = 1;
+    }
     hold_tetromino_ = temp;
+    hold_tetromino_.row = 12 + (4 - s_tetrominoes[curr_tetromino_.type][0]) / 2.0;
+    hold_tetromino_.col = 16 + (4 - s_tetrominoes[curr_tetromino_.type][0]) / 2.0;
+    can_hold = false;
 }
 
 void Tetris::hard_drop()
@@ -214,8 +231,8 @@ void Tetris::render_all(const Renderer& renderer) const
     // render current tetromino
     render_tetromino(curr_tetromino_, renderer);
 
-    // render upcoming tetromino
-    row = 9, col = 15;
+    // canvas for upcoming tetromino
+    row = 5, col = 15;
     for(int i = 0; i < 16; ++i)
     {
         if(++col > 19)
@@ -225,7 +242,22 @@ void Tetris::render_all(const Renderer& renderer) const
         }
         render_block(row, col, s_colors[0], renderer);
     }
+    // render next tetromino preview
     render_tetromino(next_tetromino_, renderer);
+
+    // canvas for upcoming tetromino
+    row = 12, col = 15;
+    for(int i = 0; i < 16; ++i)
+    {
+        if(++col > 19)
+        {
+            col = 16;
+            ++row;
+        }
+        render_block(row, col, s_colors[0], renderer);
+    }
+    if(hold_tetromino_.type != UINT8_MAX)
+        render_tetromino(hold_tetromino_, renderer);
 }
 
 void Tetris::render_tetromino(const Tetromino& in_piece, const Renderer& renderer)
@@ -335,7 +367,7 @@ void Tetris::generate_tetromino(Tetromino& in_tetromino)
     in_tetromino.color = static_cast<uint8_t>(color);
     in_tetromino.type = type;
     in_tetromino.rotation = 1;
-    in_tetromino.row = 9 + (4 - s_tetrominoes[curr_tetromino_.type][0]) / 2.0;
+    in_tetromino.row = 5 + (4 - s_tetrominoes[curr_tetromino_.type][0]) / 2.0;
     in_tetromino.col = 16 + (4 - s_tetrominoes[curr_tetromino_.type][0]) / 2.0;
 }
 
@@ -388,6 +420,7 @@ void Tetris::merge()
             local_col = 0;
         }
     }
+    can_hold = true;
 }
 
 bool Tetris::check_tetromino_state_valid() const
