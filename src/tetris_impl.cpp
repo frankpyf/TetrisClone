@@ -93,7 +93,7 @@ void Tetris::init_debug()
 
     generate_tetromino(curr_tetromino_);
     generate_tetromino(next_tetromino_);
-    curr_tetromino_.col = static_cast<uint8_t>((WIDTH - s_tetrominoes[curr_tetromino_.type][0]) / 2.0);
+    curr_tetromino_.col = (WIDTH - s_tetrominoes[curr_tetromino_.type][0]) / 2.0 + 1;
     curr_tetromino_.row = 1;
 }
 
@@ -102,6 +102,7 @@ void Tetris::update_tetromino(float delta_time)
     drop_timer_ += delta_time;
     merge_timer_ += delta_time;
     // std::cout << delta_time << std::endl;
+    // tick
     if(drop_timer_ <= s_time_to_drop[level_ - 1])
         return;
     
@@ -114,14 +115,15 @@ void Tetris::update_tetromino(float delta_time)
 
     drop_timer_ = 0.0f;
     soft_drop();
+    // you've considered enough, it's time to merge
     if(merge_timer_ <= s_time_to_merge[level_ - 1])
         return;
     merge_timer_ = 0.0f;
     merge();
     curr_tetromino_ = next_tetromino_;
-    curr_tetromino_.row = 1;
-    curr_tetromino_.col = static_cast<uint8_t>((WIDTH - s_tetrominoes[curr_tetromino_.type][0]) / 2.0);
     generate_tetromino(next_tetromino_);
+    curr_tetromino_.col = (WIDTH - s_tetrominoes[curr_tetromino_.type][0]) / 2.0 + 1;
+    curr_tetromino_.row = 1;
 }
 
 void Tetris::rotate_left()
@@ -179,7 +181,7 @@ void Tetris::hard_drop()
     merge_timer_ = 0.0f;
     curr_tetromino_ = next_tetromino_;
     curr_tetromino_.row = 1;
-    curr_tetromino_.col = 1;
+    curr_tetromino_.col = (WIDTH - s_tetrominoes[curr_tetromino_.type][0]) / 2.0 + 1;
     generate_tetromino(next_tetromino_);
 }
 
@@ -329,14 +331,12 @@ void Tetris::generate_tetromino(Tetromino& in_tetromino)
     int color = std::rand() % NUM_COLOR + 1;
     // type
     int type = std::rand() % 7;
-
-    int col = (WIDTH - s_tetrominoes[type][0]) / 2;
     
     in_tetromino.color = static_cast<uint8_t>(color);
     in_tetromino.type = type;
     in_tetromino.rotation = 1;
-    in_tetromino.row = 9;
-    in_tetromino.col = 16;
+    in_tetromino.row = 9 + (4 - s_tetrominoes[curr_tetromino_.type][0]) / 2.0;
+    in_tetromino.col = 16 + (4 - s_tetrominoes[curr_tetromino_.type][0]) / 2.0;
 }
 
 uint8_t Tetris::get_tallest_underneath()
