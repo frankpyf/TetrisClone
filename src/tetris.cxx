@@ -32,11 +32,12 @@ export class Tetris {
     // used to calculate time to drop
     float drop_timer_ = 0.0; 
     float merge_timer_ = 0.0;
+    float eliminate_timer = 0.0;
     // ring buffer
     uint8_t board_[WIDTH * ACTUAL_HEIGHT]{0};
     uint8_t bottom_row_ = 22;
 
-    uint8_t level_ = 3;
+    uint8_t level_ = 1;
     uint32_t points_ = 0;
     bool can_hold = true;
 public:

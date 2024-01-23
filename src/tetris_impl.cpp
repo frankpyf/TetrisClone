@@ -1,15 +1,11 @@
 module;
 #include <iostream>
-#if !_MSC_VER
 #include <random>
 #include "SDL.h"
-#endif
 module tetris;
 
-#if _MSC_VER && !__INTEL_COMPILER
-import <random>;
-#endif
 import renderer;
+
 static constexpr SDL_Color s_colors[] = {
     {0, 0, 0, 255},     // Empty block
     {255, 0, 0, 255}, 
@@ -93,24 +89,26 @@ void Tetris::init_debug()
 
 void Tetris::update_tetromino(float delta_time)
 {
-    // Transform delta time into ticks
     drop_timer_ += delta_time;
     merge_timer_ += delta_time;
-    
-    // tick
-    if(drop_timer_ <= s_time_to_drop[level_ - 1])
-        return;
-    
-    // TODO: Optimize this
-    for(uint8_t row = 1; row <= ACTUAL_HEIGHT; ++row)
+    eliminate_timer += delta_time;
+
+    if(drop_timer_ > s_time_to_drop[level_ - 1])
     {
-        if(board_[board_row_col_to_index(row, 1)] == (NUM_COLOR + 1))
-            clear_row(row);
+        drop_timer_ = 0.0f;
+        soft_drop();
+    }
+    
+    if(eliminate_timer > 1.5)
+    {
+        for(uint8_t row = 1; row <= ACTUAL_HEIGHT; ++row)
+        {
+            if(board_[board_row_col_to_index(row, 1)] == (NUM_COLOR + 1))
+                clear_row(row);
+        }
+        eliminate_timer = 0.0;
     }
 
-    drop_timer_ = 0.0f;
-    soft_drop();
-    // you've considered enough, it's time to merge
     if(merge_timer_ <= s_time_to_merge[level_ - 1])
         return;
     merge_timer_ = 0.0f;
@@ -319,6 +317,7 @@ void Tetris::clear_row(uint8_t row)
             memcpy(&board_[board_row_col_to_index(line, 1)], &board_[board_row_col_to_index(line - 1, 1)], WIDTH);
         }
     }
+    points_ += 10;
 }
 
 void Tetris::set_row(uint8_t row, uint8_t value)
