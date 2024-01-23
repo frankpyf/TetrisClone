@@ -1,21 +1,15 @@
-cmake_minimum_required(VERSION 3.26)
+cmake_minimum_required(VERSION 3.28)
 
 project(
     Tetris
     VERSION 0.1.0
     LANGUAGES CXX
     )
-set(CMAKE_CXX_STANDARD 20)
-# In order to support C++20 modules, 
-# there are a number of behaviors that have CMake APIs to provide the required features to build and export them from a project.
-set(CMAKE_EXPERIMENTAL_CXX_MODULE_CMAKE_API "aa1f7df0-828a-4fcd-9afc-2dc80491aca7")
-set(CMAKE_EXPERIMENTAL_CXX_MODULE_DYNDEP 1)
 
-if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-  include(gcc_modules.cmake)
-elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-  set(CMAKE_CXX_EXTENSIONS OFF)
-endif()
+# Turning off extensions avoids an issue with the clang 16 compiler
+# clang 17 and greater can avoid this setting
+set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_CXX_STANDARD 20)
 
 include(FetchContent)
 
@@ -39,7 +33,7 @@ target_sources(tetris
         FILE_SET modules 
         TYPE CXX_MODULES 
         FILES ${MODULE}
-        )
+)
 
 # SDL2::SDL2main may or may not be available.
 if(TARGET SDL2::SDL2main)

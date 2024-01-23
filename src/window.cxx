@@ -1,14 +1,7 @@
 module;
 #include "SDL.h"
-
-#if !_MSC_VER
 #include <memory>
-#endif
 export module window;
-
-#if _MSC_VER && !__INTEL_COMPILER
-import <memory>;
-#endif
 
 constexpr uint32_t SCREEN_WIDTH = 1280;
 constexpr uint32_t SCREEN_HEIGHT = 720;

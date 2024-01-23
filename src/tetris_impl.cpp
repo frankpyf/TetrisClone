@@ -5,6 +5,7 @@ module;
 #include "SDL.h"
 #endif
 module tetris;
+
 #if _MSC_VER && !__INTEL_COMPILER
 import <random>;
 #endif
@@ -79,14 +80,7 @@ void Tetris::init_debug()
     std::srand(std::time(nullptr));
     std::cout << "size of Tetromino" << sizeof(Tetromino) <<std::endl;
     std::cout << "size of Tetris" << sizeof(Tetris) <<std::endl;
-    // board_[218] = 1;
-    // board_[219] = 1;
-    // board_[216] = 3;
-    // board_[217] = 4;
 
-    // board_[210] = 1;
-    // board_[209] = 1;
-    // board_[208] = 1;
     board_[board_row_col_to_index(22, 10)] = 1;
     board_[board_row_col_to_index(22, 9)] = 1;
     board_[board_row_col_to_index(22, 8)] = 1;
@@ -99,6 +93,7 @@ void Tetris::init_debug()
 
 void Tetris::update_tetromino(float delta_time)
 {
+    // Transform delta time into ticks
     drop_timer_ += delta_time;
     merge_timer_ += delta_time;
     

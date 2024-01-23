@@ -1,14 +1,9 @@
 module;
 #include "SDL.h"
-#if !_MSC_VER
 #include <memory>
-#endif
 export module renderer;
 
 import window;
-#if _MSC_VER && !__INTEL_COMPILER
-import <memory>;
-#endif
 
 struct RendererDeleter {
     void operator()(SDL_Renderer* renderer)

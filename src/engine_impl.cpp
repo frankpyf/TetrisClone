@@ -12,6 +12,7 @@ static constexpr float s_ms_per_frame = 1.0 / 60.0;
 
 Engine::Engine()
 {
+    std::srand(time(0));
     SDL_Init(SDL_INIT_EVERYTHING);
     std::cout<<"Engine created"<<std::endl;
 }
