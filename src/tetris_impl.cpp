@@ -14,7 +14,7 @@ static constexpr SDL_Color s_colors[] = {
     {255, 255, 0, 255}, 
     {0,  255, 0, 255}, 
     {0, 0, 255, 255},
-    {255, 127, 0, 255},
+    {255, 127, 0, 122},
     {248, 248, 248, 255}  // Block to be eliminated
 };
 
@@ -93,6 +93,16 @@ void Tetris::update_tetromino(float delta_time)
     merge_timer_ += delta_time;
     eliminate_timer += delta_time;
 
+    // Render Prediciton
+    pred_tetromino_ = curr_tetromino_;
+    while(check_tetromino_state_valid(pred_tetromino_))
+    {
+        ++pred_tetromino_.row;
+    }
+    --pred_tetromino_.row;
+    pred_tetromino_.color = NUM_COLOR + 1;
+
+
     if(drop_timer_ > s_time_to_drop[level_ - 1])
     {
         drop_timer_ = 0.0f;
@@ -122,7 +132,7 @@ void Tetris::update_tetromino(float delta_time)
 void Tetris::rotate_left()
 {
     curr_tetromino_.rotation = (curr_tetromino_.rotation + 3) % 4;
-    while(!check_tetromino_state_valid())
+    while(!check_tetromino_state_valid(curr_tetromino_))
     {
         curr_tetromino_.row--;
     }
@@ -131,7 +141,7 @@ void Tetris::rotate_left()
 void Tetris::rotate_right()
 {
     curr_tetromino_.rotation = (curr_tetromino_.rotation + 1) % 4;
-    while(!check_tetromino_state_valid())
+    while(!check_tetromino_state_valid(curr_tetromino_))
     {
         curr_tetromino_.row--;
     }
@@ -140,7 +150,7 @@ void Tetris::rotate_right()
 void Tetris::move_left()
 {
     --curr_tetromino_.col;
-    if(!check_tetromino_state_valid())
+    if(!check_tetromino_state_valid(curr_tetromino_))
     {
         ++curr_tetromino_.col;
     }
@@ -149,7 +159,7 @@ void Tetris::move_left()
 void Tetris::move_right()
 {
     ++curr_tetromino_.col;
-    if(!check_tetromino_state_valid())
+    if(!check_tetromino_state_valid(curr_tetromino_))
     {
         --curr_tetromino_.col;
     }
@@ -181,7 +191,7 @@ void Tetris::hold_tetromino()
 
 void Tetris::hard_drop()
 {
-    while(check_tetromino_state_valid())
+    while(check_tetromino_state_valid(curr_tetromino_))
     {
         ++curr_tetromino_.row;
     }
@@ -198,7 +208,7 @@ void Tetris::hard_drop()
 void Tetris::soft_drop()
 {
     ++curr_tetromino_.row;
-    if(!check_tetromino_state_valid())
+    if(!check_tetromino_state_valid(curr_tetromino_))
     {
         --curr_tetromino_.row;
     }
@@ -223,6 +233,8 @@ void Tetris::render_all(const Renderer& renderer) const
 
     // render current tetromino
     render_tetromino(curr_tetromino_, renderer);
+
+    render_tetromino(pred_tetromino_, renderer);
 
     // canvas for upcoming tetromino
     row = 5, col = 15;
@@ -365,31 +377,6 @@ void Tetris::generate_tetromino(Tetromino& in_tetromino)
     in_tetromino.col = 16 + (4 - s_tetrominoes[curr_tetromino_.type][0]) / 2.0;
 }
 
-uint8_t Tetris::get_tallest_underneath()
-{
-    const auto& tetromino = s_tetrominoes[curr_tetromino_.type];
-    uint8_t n = tetromino[0];
-    uint8_t row = curr_tetromino_.row + n - 1, col = curr_tetromino_.col;
-    int min_row = ACTUAL_HEIGHT;
-    for(int i = 0; i < n; ++i)
-    {
-        // get the bottom of current piece
-        while(tetromino[tetromino_row_col_to_index(row, col + i, curr_tetromino_, n)] == 0)
-        {
-            row--;
-        }
-        row++;
-        while(board_[board_row_col_to_index(row, col + i)] == 0)
-        {
-            row++;
-        }
-        if(row < min_row)
-            min_row = row;
-    }
-    
-    return min_row;
-}
-
 void Tetris::merge()
 {
     const auto& tetromino = s_tetrominoes[curr_tetromino_.type];
@@ -417,16 +404,16 @@ void Tetris::merge()
     can_hold = true;
 }
 
-bool Tetris::check_tetromino_state_valid() const
+bool Tetris::check_tetromino_state_valid(const Tetromino& in_tetromino) const
 {
-    const auto& tetromino = s_tetrominoes[curr_tetromino_.type];
+    const auto& tetromino = s_tetrominoes[in_tetromino.type];
     int local_row = 0, local_col = 0;
     int n = tetromino[0];
 
-    int row = curr_tetromino_.row, col = curr_tetromino_.col;
+    int row = in_tetromino.row, col = in_tetromino.col;
     while(local_row < n)
     {
-        uint8_t data = tetromino[tetromino_row_col_to_index(local_row, local_col, curr_tetromino_, n)];
+        uint8_t data = tetromino[tetromino_row_col_to_index(local_row, local_col, in_tetromino, n)];
         if(data != 0)
         {
             if(board_[board_row_col_to_index(row + local_row, col + local_col)] !=0 ||

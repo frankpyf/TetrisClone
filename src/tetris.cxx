@@ -27,7 +27,8 @@ struct Tetromino {
 export class Tetris {
     Tetromino curr_tetromino_{};
     Tetromino next_tetromino_{};
-    Tetromino hold_tetromino_{};    
+    Tetromino hold_tetromino_{};  
+    Tetromino pred_tetromino_{};  
     
     // used to calculate time to drop
     float drop_timer_ = 0.0; 
@@ -74,9 +75,7 @@ private:
     // swap current and next tetromino
     void swap();
 
-    bool check_tetromino_state_valid() const;
-
-    uint8_t get_tallest_underneath();
+    bool check_tetromino_state_valid(const Tetromino&) const;
 
     uint8_t board_row_col_to_index(uint8_t row, uint8_t col) const;
     static uint8_t tetromino_row_col_to_index(uint8_t local_row, uint8_t local_col, Tetromino, uint8_t n);
