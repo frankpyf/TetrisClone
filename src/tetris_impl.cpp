@@ -73,7 +73,6 @@ static constexpr float s_time_to_merge[] = {
 
 void Tetris::init_debug()
 {
-    std::srand(std::time(nullptr));
     std::cout << "size of Tetromino" << sizeof(Tetromino) <<std::endl;
     std::cout << "size of Tetris" << sizeof(Tetris) <<std::endl;
 
@@ -89,6 +88,13 @@ void Tetris::init_debug()
 
 void Tetris::update_tetromino(float delta_time)
 {
+    if(!rows_to_eliminated_.empty())
+    {
+        for(const auto& row : rows_to_eliminated_)
+        {
+            set_row(row, NUM_COLOR + 1);
+        }
+    }
     drop_timer_ += delta_time;
     merge_timer_ += delta_time;
     eliminate_timer += delta_time;

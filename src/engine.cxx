@@ -17,6 +17,7 @@ public:
     virtual ~Engine();
     void init();
     void run();
+    void quit();
 private:
     void process_input();
 

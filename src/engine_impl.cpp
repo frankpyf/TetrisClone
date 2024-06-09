@@ -26,6 +26,7 @@ void Engine::init()
     input_.bind_action(SDL_SCANCODE_D, std::bind(&Tetris::move_right, &tetris_));
     input_.bind_action(SDL_SCANCODE_H, std::bind(&Tetris::hold_tetromino, &tetris_));
     input_.bind_action(SDL_SCANCODE_SPACE, std::bind(&Tetris::hard_drop, &tetris_));
+    input_.bind_action(SDL_SCANCODE_ESCAPE, std::bind(&Engine::quit, this));
 }
 
 void Engine::run()
@@ -73,6 +74,11 @@ void Engine::run()
             SDL_Delay(s_ms_per_frame - dt);
     }
     std::cout<<"Engine running"<<std::endl;
+}
+
+void Engine::quit()
+{
+    should_close_ = true;
 }
 
 Engine::~Engine()

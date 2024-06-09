@@ -1,5 +1,6 @@
 module;
 #include "SDL.h"
+#include <vector>
 export module tetris;
 
 import renderer;
@@ -41,6 +42,8 @@ export class Tetris {
     uint8_t level_ = 1;
     uint32_t points_ = 0;
     bool can_hold = true;
+
+    std::vector<uint8_t> rows_to_eliminated_{};
 public:
     void init_debug();
     void init();
