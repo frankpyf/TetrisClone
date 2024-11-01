@@ -28,5 +28,8 @@ public:
     Window& operator=(const Window&) = delete;
     Window(Window&&) = default;
 
+    uint32_t get_height() const { return height_; }
+    uint32_t get_width() const { return width_; }
+
     ~Window() = default;
 };

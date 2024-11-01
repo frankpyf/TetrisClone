@@ -1,10 +1,13 @@
 module;
 #include <iostream>
 #include <random>
+#include <functional>
 #include "SDL.h"
 module tetris;
 
-import renderer;
+import engine;
+
+static constexpr const uint8_t s_points_for_row[] = {40, 100, 300, 1200};
 
 static constexpr SDL_Color s_colors[] = {
     {0, 0, 0, 255},     // Empty block
@@ -18,421 +21,377 @@ static constexpr SDL_Color s_colors[] = {
     {248, 248, 248, 255}  // Block to be eliminated
 };
 
-static constexpr uint8_t I[] = { 4,
-    0, 0, 0, 0,
-    1, 1, 1, 1, 
-    0, 0, 0, 0, 
-    0, 0, 0, 0 
-};
-static constexpr uint8_t O[] = { 2,
-    1, 1, 
-    1, 1 
-};
-static constexpr uint8_t Z[] = { 3,
-    1, 1, 0, 
-    0, 1, 1,
-    0, 0, 0
-};
-static constexpr uint8_t S[] = { 3,
-    0, 1, 1, 
-    1, 1, 0,
-    0, 0, 0
-};
-static constexpr uint8_t T[] = { 3,
-    1, 1, 1, 
-    0, 1, 0,
-    0, 0, 0
-};
-static constexpr uint8_t L[] = { 3,
-    0, 0, 1, 
-    1, 1, 1,
-    0, 0, 0
-};
-// Inverse L
-static constexpr uint8_t IL[] = { 3,
-    1, 0, 0, 
-    1, 1, 1,
-    0, 0, 0
-};
-
-static constexpr const uint8_t* s_tetrominoes[7] = {I, O, S, Z, T, L, IL};
-
-static constexpr const float s_time_to_drop[] = {
-    60.0 / 60.0,
-    30.0 / 60.0,
-    10.0 / 60.0,
-    1.0 / 60.0f
-};
-
-static constexpr float s_time_to_merge[] = {
-    s_time_to_drop[0] * (22 + 10),
-    s_time_to_drop[1] * (22 + 10),
-    s_time_to_drop[2] * (22 + 10),
-    s_time_to_drop[3] * (22 + 10)
-};
-
-void Tetris::init_debug()
+void Object::do_tick(float delta_time)
 {
-    std::cout << "size of Tetromino" << sizeof(Tetromino) <<std::endl;
-    std::cout << "size of Tetris" << sizeof(Tetris) <<std::endl;
-
-    board_[board_row_col_to_index(22, 10)] = 1;
-    board_[board_row_col_to_index(22, 9)] = 1;
-    board_[board_row_col_to_index(22, 8)] = 1;
-
-    generate_tetromino(curr_tetromino_);
-    generate_tetromino(next_tetromino_);
-    curr_tetromino_.col = (WIDTH - s_tetrominoes[curr_tetromino_.type][0]) / 2.0 + 1;
-    curr_tetromino_.row = 1;
+    if(!b_should_tick_) return;
+    float update_interval = 1000.f / update_frequency_;
+    interval_ += delta_time;
+    if(interval_ < update_interval) return;
+    interval_ = 0;
+    tick(delta_time);
 }
 
-void Tetris::update_tetromino(float delta_time)
+void Object::do_render(const Renderer& in_renderer) const
 {
-    if(!rows_to_eliminated_.empty())
+    if(!b_should_render_) return;
+    render(in_renderer);
+}
+
+Tetromino::Tetromino(Board& owning_board, const uint8_t row, const uint8_t col, const Info info)
+    : owning_board_(owning_board), info_(info), row_(row), col_(col)
+{
+    render_priority_ = 1;
+    update_predict();
+}
+
+void Tetromino::move_right(const int8_t input_value)
+{
+    int8_t original_col = col_;
+    col_ += input_value;
+    if(!check_state_valid())
     {
-        for(const auto& row : rows_to_eliminated_)
+        col_ = original_col;
+    }
+    update_predict();
+}
+void Tetromino::move_down(const int8_t input_value)
+{
+    int8_t original_row = row_;
+    row_ += input_value;
+    if(!check_state_valid())
+    {
+        row_ = original_row;
+    }
+}
+
+void Tetromino::rotate()
+{
+    uint8_t original_rotation = rotation_;
+    rotation_ = (rotation_ + 1) % 4;
+    if(!check_state_valid())
+    {
+        rotation_ = original_rotation;
+    }
+    update_predict();
+}
+
+void Tetromino::hard_drop()
+{
+    row_ = predict_row_;
+    owning_board_.merge(*this);
+    to_next();
+}
+
+Tetromino &Tetromino::reset_pos(const uint8_t row, const uint8_t col)
+{
+    row_ = row;
+    col_ = col;
+    update_predict();
+    return *this;
+}
+void Tetromino::reset(Info new_tetromino)
+{
+    info_ = new_tetromino;
+    rotation_ = 0;
+}
+
+void Tetromino::to_next()
+{
+    reset(owning_board_.pop_next());
+    reset_pos();
+    grounded_tick_ = 0;
+}
+
+void Tetromino::hold()
+{
+    owning_board_.swap_hold(*this);
+}
+
+uint8_t Tetromino::get(uint8_t local_row, uint8_t local_col) const
+{
+    const uint8_t* const cur_tetromino = s_tetrominoes[info_.type];
+    uint8_t n = cur_tetromino[0];
+    uint8_t idx = 0;
+    switch (rotation_)
+    {
+    case 0:
+        idx = local_row * n + local_col + 1;
+        break;
+    case 1:
+        idx = (n - 1 - local_col) * n + local_row + 1;
+        break;
+    case 2:
+        idx = (n - 1 - local_row) * n + (n - 1 - local_col) + 1;
+        break;
+    case 3:
+        idx = local_col * n + n - local_row;
+        break;
+    }
+
+    return info_.color * cur_tetromino[idx];
+}
+
+void Tetromino::init()
+{
+    update_frequency_ = 1;   
+    auto& g_engine = Engine::get();
+    auto& input_system = g_engine.input_;
+
+    input_system.bind_action(SDL_SCANCODE_A, std::bind(&Tetromino::move_right, this, -1));
+    input_system.bind_action(SDL_SCANCODE_D, std::bind(&Tetromino::move_right, this, 1));
+    input_system.bind_action(SDL_SCANCODE_S, std::bind(&Tetromino::move_down, this, 1));
+    input_system.bind_action(SDL_SCANCODE_R, std::bind(&Tetromino::rotate, this));
+    input_system.bind_action(SDL_SCANCODE_SPACE, std::bind(&Tetromino::hard_drop, this));
+    input_system.bind_action(SDL_SCANCODE_Q, std::bind(&Tetromino::hold, this));
+}
+
+void Tetromino::tick(float delta_time)
+{
+    ++row_;
+    if(!check_state_valid())
+    {
+        --row_;
+        ++grounded_tick_;
+        if(grounded_tick_ > 5)
         {
-            set_row(row, NUM_COLOR + 1);
+            owning_board_.merge(*this);
+            to_next();
         }
-    }
-    drop_timer_ += delta_time;
-    merge_timer_ += delta_time;
-    eliminate_timer += delta_time;
-
-    // Render Prediciton
-    pred_tetromino_ = curr_tetromino_;
-    while(check_tetromino_state_valid(pred_tetromino_))
-    {
-        ++pred_tetromino_.row;
-    }
-    --pred_tetromino_.row;
-    pred_tetromino_.color = NUM_COLOR + 1;
-
-
-    if(drop_timer_ > s_time_to_drop[level_ - 1])
-    {
-        drop_timer_ = 0.0f;
-        soft_drop();
-    }
-    
-    if(eliminate_timer > 1.5)
-    {
-        for(uint8_t row = 1; row <= ACTUAL_HEIGHT; ++row)
-        {
-            if(board_[board_row_col_to_index(row, 1)] == (NUM_COLOR + 1))
-                clear_row(row);
-        }
-        eliminate_timer = 0.0;
-    }
-
-    if(merge_timer_ <= s_time_to_merge[level_ - 1])
-        return;
-    merge_timer_ = 0.0f;
-    merge();
-    curr_tetromino_ = next_tetromino_;
-    generate_tetromino(next_tetromino_);
-    curr_tetromino_.col = (WIDTH - s_tetrominoes[curr_tetromino_.type][0]) / 2.0 + 1;
-    curr_tetromino_.row = 1;
-}
-
-void Tetris::rotate_left()
-{
-    curr_tetromino_.rotation = (curr_tetromino_.rotation + 3) % 4;
-    while(!check_tetromino_state_valid(curr_tetromino_))
-    {
-        curr_tetromino_.row--;
-    }
-}
-
-void Tetris::rotate_right()
-{
-    curr_tetromino_.rotation = (curr_tetromino_.rotation + 1) % 4;
-    while(!check_tetromino_state_valid(curr_tetromino_))
-    {
-        curr_tetromino_.row--;
-    }
-}
-
-void Tetris::move_left()
-{
-    --curr_tetromino_.col;
-    if(!check_tetromino_state_valid(curr_tetromino_))
-    {
-        ++curr_tetromino_.col;
-    }
-}
-
-void Tetris::move_right()
-{
-    ++curr_tetromino_.col;
-    if(!check_tetromino_state_valid(curr_tetromino_))
-    {
-        --curr_tetromino_.col;
-    }
-}
-
-void Tetris::hold_tetromino()
-{
-    if(!can_hold)
-        return;
-    Tetromino temp = curr_tetromino_;
-    if(hold_tetromino_.type != UINT8_MAX)
-    {
-        curr_tetromino_ = hold_tetromino_;
-        curr_tetromino_.col = (WIDTH - s_tetrominoes[curr_tetromino_.type][0]) / 2.0 + 1;
-        curr_tetromino_.row = 1;
-    }
-    else   
-    {
-        curr_tetromino_ = next_tetromino_;
-        generate_tetromino(next_tetromino_);
-        curr_tetromino_.col = (WIDTH - s_tetrominoes[curr_tetromino_.type][0]) / 2.0 + 1;
-        curr_tetromino_.row = 1;
-    }
-    hold_tetromino_ = temp;
-    hold_tetromino_.row = 12 + (4 - s_tetrominoes[curr_tetromino_.type][0]) / 2.0;
-    hold_tetromino_.col = 16 + (4 - s_tetrominoes[curr_tetromino_.type][0]) / 2.0;
-    can_hold = false;
-}
-
-void Tetris::hard_drop()
-{
-    while(check_tetromino_state_valid(curr_tetromino_))
-    {
-        ++curr_tetromino_.row;
-    }
-    --curr_tetromino_.row;    
-    merge();
-    drop_timer_ = 0.0f;
-    merge_timer_ = 0.0f;
-    curr_tetromino_ = next_tetromino_;
-    curr_tetromino_.row = 1;
-    curr_tetromino_.col = (WIDTH - s_tetrominoes[curr_tetromino_.type][0]) / 2.0 + 1;
-    generate_tetromino(next_tetromino_);
-}
-
-void Tetris::soft_drop()
-{
-    ++curr_tetromino_.row;
-    if(!check_tetromino_state_valid(curr_tetromino_))
-    {
-        --curr_tetromino_.row;
-    }
-}
-
-void Tetris::render_all(const Renderer& renderer) const
-{
-    // top left:(1, 1)
-    // bottom right: (10, 22)
-
-    // render board
-    uint8_t row = 3, col = 0;
-    for(int i = 0; i < WIDTH * ACTUAL_HEIGHT; ++i)
-    {
-        if(++col > WIDTH)
-        {
-            col = 1;
-            ++row;
-        }
-        render_block(row, col, s_colors[board_[board_row_col_to_index(row, col)]], renderer);
-    }
-
-    // render current tetromino
-    render_tetromino(curr_tetromino_, renderer);
-
-    render_tetromino(pred_tetromino_, renderer);
-
-    // canvas for upcoming tetromino
-    row = 5, col = 15;
-    for(int i = 0; i < 16; ++i)
-    {
-        if(++col > 19)
-        {
-            col = 16;
-            ++row;
-        }
-        render_block(row, col, s_colors[0], renderer);
-    }
-    // render next tetromino preview
-    render_tetromino(next_tetromino_, renderer);
-
-    // canvas for upcoming tetromino
-    row = 12, col = 15;
-    for(int i = 0; i < 16; ++i)
-    {
-        if(++col > 19)
-        {
-            col = 16;
-            ++row;
-        }
-        render_block(row, col, s_colors[0], renderer);
-    }
-    if(hold_tetromino_.type != UINT8_MAX)
-        render_tetromino(hold_tetromino_, renderer);
-}
-
-void Tetris::render_tetromino(const Tetromino& in_piece, const Renderer& renderer)
-{
-    const auto& tetromino = s_tetrominoes[in_piece.type];
-    SDL_Color color = s_colors[in_piece.color];
-
-    int local_row = 0, local_col = 0;
-    int n = tetromino[0];
-
-    int row = in_piece.row, col = in_piece.col;
-    while(local_row < n)
-    {
-        uint8_t data = tetromino[tetromino_row_col_to_index(local_row, local_col, in_piece, n)];
-        if(data != 0)
-            render_block(row + local_row, col + local_col, color, renderer);
-        local_col++;
-        if(local_col == n)
-        {
-            local_row++;
-            local_col = 0;
-        }
-    }
-}
-
-void Tetris::render_block(uint8_t row, uint8_t col, const SDL_Color& color, const Renderer& renderer)
-{
-    constexpr int w = 30, h = 30;
-    // TODO: eliminate hard coding: 490, 720...
-    SDL_Rect rect{490 + (col - 1) * h, (720 - h * ACTUAL_HEIGHT) + (row - 1) * w , w, h};
-    renderer.draw_rect_fill(rect, color);
-    renderer.draw_rect_outline(rect, {125, 125, 125, 255});
-}
-
-void Tetris::set_board(uint8_t row, uint8_t col, uint8_t value)
-{
-    board_[board_row_col_to_index(row, col)] = value;
-}
-
-bool Tetris::check_row_full(uint8_t row) const
-{
-    for(uint8_t col = 1; col <= WIDTH; ++col)
-    {
-        if(board_[board_row_col_to_index(row, col)] == 0)
-            return false;
-    }
-    return true;
-}
-
-void Tetris::clear_row(uint8_t row)
-{
-    if(row == ACTUAL_HEIGHT)
-    {
-        for(int i = 1; i <= 10; ++i)
-        {
-            set_board(row, i, 0);
-        }
-        bottom_row_ = (bottom_row_ - 1) == 0 ? 22 : --bottom_row_;
     }
     else
     {
-        for(int line = row; line > 1; --line)
-        {
-            memcpy(&board_[board_row_col_to_index(line, 1)], &board_[board_row_col_to_index(line - 1, 1)], WIDTH);
-        }
-    }
-    points_ += 10;
-}
-
-void Tetris::set_row(uint8_t row, uint8_t value)
-{
-    for(uint8_t col = 1; col <= WIDTH; ++col)
-    {
-        board_[board_row_col_to_index(row, col)] = value;
+        grounded_tick_ = 0;
     }
 }
 
-uint8_t Tetris::board_row_col_to_index(uint8_t row, uint8_t col) const
+void Tetromino::render(const Renderer& renderer) const
 {
+    int length_with_space = owning_board_.get_unit_length() + 1;
+    int offset_w = -(owning_board_.get_width() / 2) * length_with_space;
+    int offset_h = -(owning_board_.get_height() / 2) * length_with_space;
 
-    return ((bottom_row_ * (WIDTH)) + (row - 1) * WIDTH + col - 1) % (WIDTH * ACTUAL_HEIGHT);
-}
-
-uint8_t Tetris::tetromino_row_col_to_index(uint8_t local_row, uint8_t local_col, Tetromino tetromino, uint8_t n) 
-{
-    switch(tetromino.rotation)
-    {
-        case 0:
-            return local_col * n + n - local_row;
-        case 1:
-            return local_row * n + local_col + 1;
-        case 2:
-            return (n - 1 - local_col) * n + local_row + 1;
-        case 3:
-            return (n - 1 - local_row) * n + (n - 1 - local_col) + 1;
-    }
-
-    return 0;
-}
-
-void Tetris::generate_tetromino(Tetromino& in_tetromino)
-{
-    // color
-    int color = std::rand() % NUM_COLOR + 1;
-    // type
-    int type = std::rand() % 7;
-    
-    in_tetromino.color = static_cast<uint8_t>(color);
-    in_tetromino.type = type;
-    in_tetromino.rotation = 1;
-    in_tetromino.row = 5 + (4 - s_tetrominoes[curr_tetromino_.type][0]) / 2.0;
-    in_tetromino.col = 16 + (4 - s_tetrominoes[curr_tetromino_.type][0]) / 2.0;
-}
-
-void Tetris::merge()
-{
-    const auto& tetromino = s_tetrominoes[curr_tetromino_.type];
-
-    uint8_t local_row = 0, local_col = 0;
+    const uint8_t* const tetromino = s_tetrominoes[info_.type];
     uint8_t n = tetromino[0];
-    uint8_t color = curr_tetromino_.color;
-    uint8_t row = curr_tetromino_.row, col = curr_tetromino_.col;
-    while(local_row < n)
+    for(int row = 0; row < n; ++row)
     {
-        uint8_t data = tetromino[tetromino_row_col_to_index(local_row, local_col, curr_tetromino_, n)];
-        if(data != 0)
-            board_[board_row_col_to_index(row + local_row, col + local_col)] = data * color;
-        if(check_row_full(row + local_row))
+        for(int col = 0; col < n; ++col)
         {
-            set_row(row + local_row, NUM_COLOR + 1);
-        }
-        local_col++;
-        if(local_col == n)
-        {
-            local_row++;
-            local_col = 0;
+            if(!get(row, col))
+                continue;
+            int board_row = row + row_;
+            int board_col = col + col_;
+            renderer.draw_rect_fill(
+                {offset_w + board_col * length_with_space, offset_h + board_row * length_with_space, static_cast<int>(owning_board_.get_unit_length()), static_cast<int>(owning_board_.get_unit_length())},
+                s_colors[get(row, col)]);
         }
     }
-    can_hold = true;
+    if(predict_row_ - row_ < n) return;
+    // render predict when far away
+    for(int row = 0; row < n; ++row)
+    {
+        for(int col = 0; col < n; ++col)
+        {
+            if(!get(row, col))
+                continue;
+            int board_row = row + predict_row_;
+            int board_col = col + col_;
+            renderer.draw_rect_outline(
+                {offset_w + board_col * length_with_space, offset_h + board_row * length_with_space, static_cast<int>(owning_board_.get_unit_length()), static_cast<int>(owning_board_.get_unit_length())},
+                4,
+                s_colors[get(row, col)]);
+        }
+    }
 }
 
-bool Tetris::check_tetromino_state_valid(const Tetromino& in_tetromino) const
+bool Tetromino::check_state_valid() const
 {
-    const auto& tetromino = s_tetrominoes[in_tetromino.type];
-    int local_row = 0, local_col = 0;
-    int n = tetromino[0];
-
-    int row = in_tetromino.row, col = in_tetromino.col;
-    while(local_row < n)
+    const uint8_t* const cur_tetromino = s_tetrominoes[info_.type];
+    uint8_t n = cur_tetromino[0];
+    for(int local_row = 0; local_row < n; ++local_row)
     {
-        uint8_t data = tetromino[tetromino_row_col_to_index(local_row, local_col, in_tetromino, n)];
-        if(data != 0)
+        for(int local_col = 0; local_col < n; ++local_col)
         {
-            if(board_[board_row_col_to_index(row + local_row, col + local_col)] !=0 ||
-            row + local_row > ACTUAL_HEIGHT || row + local_row <= 0 ||
-            col + local_col > WIDTH || col + local_col <= 0)
+            if(!get(local_row, local_col)) continue;
+            int8_t global_row = row_ + local_row;
+            int8_t global_col = col_ + local_col;
+            
+            if(global_row < 0 || global_row >= owning_board_.get_height()
+            || global_col < 0 || global_col >= owning_board_.get_width()
+            || owning_board_.get(global_row, global_col))
+            {
                 return false;
-        }
-        local_col++;
-        if(local_col == n)
-        {
-            local_row++;
-            local_col = 0;
+            }
         }
     }
     return true;
+}
+
+void Tetromino::update_predict()
+{
+    predict_row_ = row_;
+    while(check_state_valid())
+    {
+        ++row_;
+    }
+    --row_;
+    std::swap(predict_row_, row_);
+}
+
+Board::Board(uint32_t width, uint32_t height, uint32_t unit_length)
+    : width_(width), height_(height), unit_length_(unit_length), data_(width_ * height_, 0)
+{
+}
+
+void Board::merge(const Tetromino& in_tetromino)
+{
+    bool b_tspin = false;
+    auto tetromino = Tetromino::s_tetrominoes[in_tetromino.info_.type];
+    if(tetromino == Tetromino::T)
+    {
+        // check whether three of the four corners are occupied
+        // if so, it is a t-spin
+        int num_occupied = 0;
+        if(get(in_tetromino.row_, in_tetromino.col_)) ++num_occupied;
+        if(get(in_tetromino.row_ + 2, in_tetromino.col_)) ++num_occupied;
+        if(get(in_tetromino.row_, in_tetromino.col_ + 2)) ++num_occupied;
+        if(get(in_tetromino.row_ + 2, in_tetromino.col_ + 2)) ++num_occupied;
+        
+        if(num_occupied == 3)
+        {
+            b_tspin = true;
+            std::cout << "T-spin\n";
+        }
+    }
+    uint8_t n = tetromino[0];
+    uint8_t eliminated_rows = 0;
+    for(int local_row = 0; local_row < n; ++local_row)
+    {
+        int global_row = in_tetromino.row_ + local_row;
+        for(int col = 0; col < n; ++col)
+        {
+            uint8_t block = in_tetromino.get(local_row, col);
+            if(!block) continue;
+            uint8_t idx = global_row * width_ + in_tetromino.col_ + col;
+            data_[idx] = block;
+        }
+        bool b_eliminated = true;
+        for(int col = 0; col < width_; ++col)
+        {
+            if(!data_[global_row * width_ + col])
+            {
+                b_eliminated = false;
+                break;
+            }
+        }
+        if(b_eliminated)
+        {
+            ++eliminated_rows;
+            for(int g_row = global_row ; g_row > 0; --g_row)
+            {
+                ::memcpy(
+                    &data_[g_row * width_],
+                    &data_[(g_row - 1) * width_],
+                    width_ * sizeof(data_[0])
+                );
+            }
+            std::fill(data_.begin(), data_.begin() + width_, 0);
+        }
+    }
+    auto& cur_game = Engine::get().game_;
+    cur_game.add_score(eliminated_rows, b_tspin);
+}
+
+uint8_t Board::get(uint8_t global_row, uint8_t global_col) const
+{
+    return data_[global_row * width_ + global_col];
+}
+
+Tetromino::Info Board::pop_next()
+{
+    Tetromino::Info next = next_tetromino_;
+    next_tetromino_ = Tetromino::Info();
+    return next;
+}
+
+void Board::swap_hold(Tetromino &to_swap)
+{
+    if(hold_tetromino_.color != 0)
+    {
+        swap(hold_tetromino_, to_swap.info_);
+        to_swap.reset_pos();
+    }
+    else
+    {
+        hold_tetromino_ = to_swap.info_;
+        to_swap.to_next();
+    }
+}
+
+void Board::init()
+{
+    b_should_tick_ = false;
+}
+
+void Board::render(const Renderer& renderer) const
+{
+    int length_with_space = unit_length_ + 1;
+    int offset_w = -(width_ / 2) * length_with_space;
+    int offset_h = -(height_ / 2) * length_with_space;
+    for(int row = 0; row < height_; ++row)
+    {
+        for(int col = 0; col < width_; ++col)
+        {
+            renderer.draw_rect_fill(
+                {offset_w + col * length_with_space, offset_h + row * length_with_space, static_cast<int>(unit_length_), static_cast<int>(unit_length_)},
+                s_colors[data_[row * width_ + col]]);
+        }
+    }
+    // render next tetromino
+    {
+        length_with_space *= 0.5;
+        renderer.draw_rect_fill(
+            {-20 * length_with_space, 5 * length_with_space, length_with_space * 6, length_with_space * 6},
+            {0, 0, 0, 255},
+            AnchorPoint::TopRight);
+        
+        auto next_tetromino_data = Tetromino::s_tetrominoes[next_tetromino_.type];
+        uint8_t n = next_tetromino_data[0];
+        for(uint8_t row = 0; row < n; ++row)
+        {
+            for(uint8_t col = 0; col < n; ++col)
+            {
+                uint8_t idx = row * n + col + 1;
+                if(!next_tetromino_data[idx]) continue;
+
+                renderer.draw_rect_fill(
+                    {(col - 19) * length_with_space, (row + 6) * length_with_space, static_cast<int>(unit_length_ * 0.5), static_cast<int>(unit_length_ * 0.5)},
+                    s_colors[next_tetromino_data[idx] * next_tetromino_.color],
+                    AnchorPoint::TopRight);
+            }
+        }
+    }
+
+    // render hold
+    {
+        renderer.draw_rect_fill(
+            {20 * length_with_space, 5 * length_with_space, length_with_space * 6, length_with_space * 6},
+            {0, 0, 0, 255},
+            AnchorPoint::TopLeft);
+        
+        auto hold_tetromino_data = Tetromino::s_tetrominoes[hold_tetromino_.type];
+        uint8_t n = hold_tetromino_data[0];
+        for(uint8_t row = 0; row < n; ++row)
+        {
+            for(uint8_t col = 0; col < n; ++col)
+            {
+                uint8_t idx = row * n + col + 1;
+                if(!hold_tetromino_data[idx]) continue;
+
+                renderer.draw_rect_fill(
+                    {(col + 21) * length_with_space, (row + 6) * length_with_space, static_cast<int>(unit_length_ * 0.5), static_cast<int>(unit_length_ * 0.5)},
+                    s_colors[hold_tetromino_data[idx] * hold_tetromino_.color],
+                    AnchorPoint::TopLeft);
+            }
+        }
+    }
 }

@@ -4,6 +4,7 @@ module;
 #include <unordered_map>
 export module input;
 
+
 export class InputSystem {
     std::unordered_map<SDL_Scancode, std::function<void()>> callbacks_;
 public:

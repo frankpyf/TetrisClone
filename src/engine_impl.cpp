@@ -6,9 +6,33 @@ module engine;
 import window;
 import renderer;
 import tetris;
+import <functional>;
+import <algorithm>;
+
 
 // 60 fps
-static constexpr float s_ms_per_frame = 1.0 / 60.0;
+static constexpr float ms_to_s = 1.f / 1000.f;
+
+static constexpr const int32_t base_scoring_table[] = {100, 300, 500, 800};
+
+void Game::add_score(uint8_t rows_eliminated, bool b_tspin)
+{
+    if(!rows_eliminated) return;
+    points_ += b_tspin ? 400 * (1 + rows_eliminated) : base_scoring_table[rows_eliminated - 1] * level_;
+    std::cout << "points: " << points_ << '\n';
+
+    rows_eliminated_ += rows_eliminated;
+    // level up
+    if(rows_eliminated_ > level_ * 10)
+    {
+        std::cout << "level up\n";
+        rows_eliminated_ = 0;
+        ++level_;
+
+        Tetromino* tetromino = Engine::get().get_object_by_class<Tetromino>();
+        tetromino->set_update_frequency(level_);
+    }
+}
 
 Engine::Engine()
 {
@@ -19,14 +43,17 @@ Engine::Engine()
 
 void Engine::init()
 {
-    tetris_.init_debug();
-    input_.bind_action(SDL_SCANCODE_Q, std::bind(&Tetris::rotate_left, &tetris_));
-    input_.bind_action(SDL_SCANCODE_E, std::bind(&Tetris::rotate_right, &tetris_));
-    input_.bind_action(SDL_SCANCODE_A, std::bind(&Tetris::move_left, &tetris_));
-    input_.bind_action(SDL_SCANCODE_D, std::bind(&Tetris::move_right, &tetris_));
-    input_.bind_action(SDL_SCANCODE_H, std::bind(&Tetris::hold_tetromino, &tetris_));
-    input_.bind_action(SDL_SCANCODE_SPACE, std::bind(&Tetris::hard_drop, &tetris_));
-    input_.bind_action(SDL_SCANCODE_ESCAPE, std::bind(&Engine::quit, this));
+    Board* board = new Board(10, 20);
+    Tetromino* tetromino = new Tetromino(*board);
+    game_objs_.emplace_back(board);
+    game_objs_.emplace_back(tetromino);
+    for(auto& obj : game_objs_)
+    {
+        obj->init();
+    }
+    std::sort(game_objs_.begin(), game_objs_.end(), [](const auto& lhs, const auto& rhs){
+        return lhs->render_priority_ < rhs->render_priority_;
+    });
 }
 
 void Engine::run()
@@ -35,7 +62,7 @@ void Engine::run()
     Renderer renderer(window);
     SDL_Event event;
 
-    float dt = s_ms_per_frame;
+    uint64_t dt = frame_interval_;
     uint64_t begin_time = SDL_GetTicks64();
     while(!should_close_)
     {
@@ -60,25 +87,25 @@ void Engine::run()
             }
         }
         
-        tetris_.update_tetromino(dt);
+        for(auto& obj : game_objs_)
+        {
+            obj->do_tick(dt);
+        }
 
-        tetris_.render_all(renderer);
+        for(const auto& obj : game_objs_)
+        {
+            obj->do_render(renderer);
+        }
 
         renderer.present();
 
         uint64_t end_time = SDL_GetTicks64();
-        dt = (end_time - begin_time) / 1000.0f;
+        dt = end_time - begin_time;
         begin_time = end_time;
 
-        if(dt < s_ms_per_frame)
-            SDL_Delay(s_ms_per_frame - dt);
+        if(dt < frame_interval_)
+            SDL_Delay(frame_interval_ - dt);
     }
-    std::cout<<"Engine running"<<std::endl;
-}
-
-void Engine::quit()
-{
-    should_close_ = true;
 }
 
 Engine::~Engine()
